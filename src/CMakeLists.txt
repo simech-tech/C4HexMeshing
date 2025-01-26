@@ -110,7 +110,7 @@ set_target_properties(C4Hex PROPERTIES
                       CXX_STANDARD 17
                       CXX_STANDARD_REQUIRED ON)
 # compile options
-list(APPEND C4Hex_COMPILE_OPTIONS_PRV "-Wall" "-Wextra" "-Wshadow" "-Wunused" "-Wunused-function")
+list(APPEND C4Hex_COMPILE_OPTIONS_PRV "-Wall" )
 target_compile_options(C4Hex PRIVATE ${C4Hex_COMPILE_OPTIONS_PRV})
 # preprocessor defines
 target_compile_definitions(C4Hex PRIVATE ${C4Hex_COMPILE_DEFINITIONS_PRV})
