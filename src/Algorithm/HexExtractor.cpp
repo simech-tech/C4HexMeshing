@@ -322,7 +322,7 @@ map<FH, map<Vec3Q, VH>> HexExtractor<MESHPROPS>::createPatchHexVEF(const map<EH,
                                 Vec3Q xyz(0, 0, 0);
                                 for (int i = 0; i < 3; i++)
                                     xyz += barCoords[i] * Vec3Q(tetMesh.vertex(vs[i]));
-                                _hexMeshProps.mesh().template set_vertex(igm2hexV.at(igm), Vec3Q2d(xyz));
+                                _hexMeshProps.mesh().set_vertex(igm2hexV.at(igm), Vec3Q2d(xyz));
                             }
                         }
                     }
@@ -507,7 +507,7 @@ map<CH, map<Vec3Q, VH>> HexExtractor<MESHPROPS>::createBlockHexVEFC(const map<FH
                             Vec3Q xyz(0, 0, 0);
                             for (int i = 0; i < 4; i++)
                                 xyz += barCoords[i] * Vec3Q(tetMesh.vertex(vs[i]));
-                            _hexMeshProps.mesh().template set_vertex(igm2hexV.at(igm), Vec3Q2d(xyz));
+                            _hexMeshProps.mesh().set_vertex(igm2hexV.at(igm), Vec3Q2d(xyz));
                         }
                     }
                 }

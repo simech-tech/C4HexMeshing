@@ -11,6 +11,8 @@
 
 #include <chrono>
 #include <iostream>
+#include <algorithm>
+#include <random>
 
 namespace c4hex
 {
@@ -659,7 +661,11 @@ bool MCCollapser::collapseNextZeroArc()
         if (isZeroArc(a))
             asZero.push_back(a);
     if (_randomOrder)
-        std::random_shuffle(asZero.begin(), asZero.end());
+    {
+        std::random_device rd;
+        std::mt19937 g(rd());
+        std::shuffle(asZero.begin(), asZero.end(), g);
+    }
     else
         std::sort(asZero.begin(),
                   asZero.end(),
@@ -1061,6 +1067,7 @@ void MCCollapser::assignCollapseDirs()
                 {
                     UVWDir dirNext = mcMeshProps().hpTransition<PATCH_TRANSITION>(hp).rotate(dirCollapse);
                     auto dirs2as = mcMeshProps().get<BLOCK_ALL_ARCS>(b);
+                    UVWDir dirTemp[] = {UVWDir::POS_U, UVWDir::POS_V, UVWDir::POS_W};
                     bool hasZeroInDirNext
                         = containsMatching(mcMesh.cell_edges(bNext),
                                            [&, this](const EH& a) {
@@ -1081,7 +1088,7 @@ void MCCollapser::assignCollapseDirs()
                                                                  && (dir & (dirNext | -dirNext)) != UVWDir::NONE;
                                                       });
                                               })
-                          || containsMatching((UVWDir[]){UVWDir::POS_U, UVWDir::POS_V, UVWDir::POS_W},
+                          || containsMatching(dirTemp,
                                               [&](const UVWDir& dir) {
                                                   return dirs2as.count(dir) == 0 && dirs2as.count(-dir) == 0
                                                          && (dir & (dirNext | -dirNext)) != UVWDir::NONE;
@@ -1135,6 +1142,7 @@ void MCCollapser::countZeroElements(int& numZeroAs, int& numZeroPs, int& numZero
 bool MCCollapser::zeroElementsRemain()
 {
     auto& mcMesh = mcMeshProps().mesh();
+    UVWDir tempDir[] = {UVWDir::POS_U, UVWDir::POS_V, UVWDir::POS_W};
 
     return hasZeroLengthArcs()
            || containsMatching(mcMesh.faces(),
@@ -1150,7 +1158,7 @@ bool MCCollapser::zeroElementsRemain()
                                [&](const CH& b)
                                {
                                    auto& dirs2as = mcMeshProps().ref<BLOCK_ALL_ARCS>(b);
-                                   return containsMatching((UVWDir[]){UVWDir::POS_U, UVWDir::POS_V, UVWDir::POS_W},
+                                   return containsMatching(tempDir,
                                                            [&](const UVWDir& dir) {
                                                                return dirs2as.count(dir) == 0
                                                                       && dirs2as.count(-dir) == 0;

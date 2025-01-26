@@ -38,10 +38,9 @@
 
 
 using namespace OpenVolumeMesh;
+using namespace HexEx;
 
-namespace HexEx {
-    
-const Transition HexExtractor::identity = Transition();
+// const Transition HexExtractor::identity = Transition();
 
 HexExtractor::HexExtractor()
     :
@@ -2172,10 +2171,11 @@ const Transition& HexExtractor::getTransitionFunction(HalfFaceHandle hfh)
     return transitionFunctions[hfh];
 }
 
+/*
 void HexExtractor::setTransitionFunction(HalfFaceHandle hfh, Transition transitionFunction)
 {
     transitionFunctions[hfh] = transitionFunction;
-}
+}*/
 
 Transition HexExtractor::getTransitionFunctionAroundHalfedge(CellHandle ch, HalfEdgeHandle heh)
 {
@@ -2669,6 +2669,7 @@ void HexExtractor::extractTransitionFunctions()
 transitionFunctionsComputed = true;
 }
 
+/*
 void HexExtractor::computeCellTypes()
 {
     for (auto ch : inputMesh.cells())
@@ -2688,7 +2689,7 @@ HexExtractor::CellType HexExtractor::computeCellType(CellHandle ch)
         return Flipped;
     else
         return Proper;
-}
+}*/
 
 void HexExtractor::randomizeParametrization(double offsetSize, double keepBoundary)
 {
@@ -3152,6 +3153,7 @@ bool HexExtractor::isIncident(HalfEdgeHandle heh, CellHandle ch)
     return false;
 }
 
+/*
 std::vector<Parameter> HexExtractor::getParameters(CellHandle ch, std::vector<VertexHandle> vhs)
 {
     auto res = std::vector<Parameter>();
@@ -3177,7 +3179,7 @@ std::vector<Parameter> HexExtractor::getParameters(HalfFaceHandle hfh, HalfEdgeH
     auto vertices = inputMesh.get_halfface_vertices(hfh, heh);
     return getParameters(inputMesh.incident_cell(hfh), vertices);
 }
-
+*/
 Position HexExtractor::getPosition(Parameter param, CellHandle ch)
 {
     auto vertices = cellVertices[ch];
@@ -3305,7 +3307,7 @@ Matrix4x4dd HexExtractor::getInverseParametrizationMatrix(Position p, Position q
 
     return mat1*mat2;
 }
-
+/*
 Parameter HexExtractor::getParameterNormal(HalfFaceHandle hfh)
 {
     auto vertices = inputMesh.get_halfface_vertices(hfh);
@@ -3329,7 +3331,7 @@ Parameter HexExtractor::getParameterNormal(HalfFaceHandle hfh)
     else
         return n.normalized();
 
-}
+}*/
 
 void HexExtractor::calculateValences()
 {
@@ -3856,6 +3858,7 @@ Transition HexExtractor::getTransitionFunction(CellHandle fromCell, CellHandle t
     }
 }
 
+/*
 double HexExtractor::parametrizationAngle(HalfFaceHandle hfh1, HalfFaceHandle hfh2, HalfEdgeHandle heh)
 {
     auto ch = inputMesh.incident_cell(hfh1);
@@ -3929,6 +3932,7 @@ int HexExtractor::edgeValence(EdgeHandle eh)
 
     return round(angleSum / (M_PI/2.0));
 }
+*/
 
 void HexExtractor::calculateEdgeSingularity(EdgeHandle eh)
 {
@@ -4062,6 +4066,7 @@ void HexExtractor::calculateEdgeSingularities()
     edgeSingularitiesCalculated = true;
 }
 
+/*
 void HexExtractor::setTranslation(GridIsomorphism& tranFun, Parameter translation)
 {
     tranFun.setTranslation(translation);
@@ -4072,7 +4077,7 @@ void HexExtractor::setTranslation(Matrix4x4d& tranFun, Parameter translation)
     tranFun(0,3) = translation[0];
     tranFun(1,3) = translation[1];
     tranFun(2,3) = translation[2];
-}
+}*/
 
 std::vector<Dart*> HexExtractor::getDartsBetweenDarts01(Dart* d_s, Dart* d_e)
 {
@@ -4487,7 +4492,7 @@ void HexExtractor::calculateDifferencesInDartTypes()
 
 }
 
-
+/*
 bool HexExtractor::isCellDegenerate(CellHandle ch)
 {
     if (!cellTypesComputed)
@@ -4527,7 +4532,7 @@ bool HexExtractor::isFaceDegenerate(HalfFaceHandle hfh)
     }
 
     return faceTypes[inputMesh.face_handle(hfh)] == Degenerate;
-}
+}*/
 
 bool HexExtractor::areColinear(CellHandle ch, HalfEdgeHandle heh, Direction dir)
 {
@@ -4583,6 +4588,7 @@ bool HexExtractor::isFixPoint(Parameter parameter, CellHandle ch, VertexHandle v
     return isFixPointRecursive(parameter, ch, vh, std::set<CellHandle>());
 }
 
+/*
 HalfFaceHandle HexExtractor::rotateAroundHalfedge(CellHandle startCell, HalfEdgeHandle currentEdge, bool ccw)
 {
     if (ccw)
@@ -4595,7 +4601,7 @@ HalfFaceHandle HexExtractor::rotateAroundHalfedge(CellHandle startCell, HalfEdge
     assert(false);
     return HalfFaceHandle();
 }
-
+*/
 void HexExtractor::doTransition(HalfFaceHandle hfh, CellHandle& ch)
 {
     ch = inputMesh.incident_cell(inputMesh.opposite_halfface_handle(hfh));
@@ -4641,5 +4647,3 @@ Matrix4x4dd HexExtractor::transitionFrame(Parameter u, Parameter v, Parameter w)
 
     return frame;
 }
-
-} // namespace HexEx

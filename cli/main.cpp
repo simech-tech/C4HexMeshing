@@ -255,8 +255,9 @@ int main(int argc, char** argv)
             for (auto a : mcMeshRaw.edges())
                 aLengths.emplace_back(meshProps.get<MC_MESH_PROPS>()->get<ARC_DBL_LENGTH>(a));
             std::sort(aLengths.begin(), aLengths.end());
-            double percentileArcLength = aLengths.at(
-                std::max(0lu, std::min(aLengths.size() - 1, (size_t)(aLengths.size() * (1.0 - scaling)))));
+            unsigned int a00 = 0;
+            unsigned int aaa = std::min(aLengths.size() - 1, (size_t)(aLengths.size() * (1.0 - scaling)));
+            double percentileArcLength = aLengths.at(std::max(a00, aaa));
             newScaling = 0.4 / percentileArcLength;
             LOG(INFO) << "To keep " << scaling * 100 << "% of arcs above length 0.5, a scaling factor of " << newScaling
                       << " for collapsing was chosen";

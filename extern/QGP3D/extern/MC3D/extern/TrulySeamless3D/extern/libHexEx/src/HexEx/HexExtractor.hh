@@ -28,6 +28,7 @@
 #include "MeshConversion.hh"
 #include "ExactPredicates.hh"
 #include "HexEx/Config/Export.hh"
+#include "DerivedExactPredicates.hh"
 
 namespace HexEx {
 
@@ -385,8 +386,25 @@ private:
 
     void removeDegeneratedTetrahedra();
 
-    void computeCellTypes();
-    CellType computeCellType(CellHandle ch);
+    void computeCellTypes()
+    {
+        for (auto ch : inputMesh.cells())
+            cellTypes[ch] = computeCellType(ch);
+
+        cellTypesComputed = true;
+    }
+    CellType computeCellType(CellHandle ch)
+    {
+        auto params = getParameters(ch);
+        auto sign = sign_orient3d(params[0].data(), params[1].data(), params[2].data(), params[3].data());
+
+        if (sign == ORI_ZERO)
+            return Degenerate;
+        else if (sign == ORI_BELOW)
+            return Flipped;
+        else
+            return Proper;
+    }
 
     void randomizeParametrization(double offsetSize, double keepBoundary = false);
 
@@ -594,9 +612,45 @@ private:
     bool pointsIntoFace(HalfFaceHandle hfh, EdgeHandle eh, Direction dir, Parameter param);
 
 
-    bool isCellDegenerate(CellHandle ch);
-    bool isCellFlipped(CellHandle ch);
-    bool isFaceDegenerate(HalfFaceHandle hfh);
+    bool isCellDegenerate(CellHandle ch)
+    {
+        if (!cellTypesComputed)
+            computeCellTypes();
+
+        ++isCellDegenerateCalls;
+
+        return cellTypes[ch] == Degenerate;
+    }
+
+    bool isCellFlipped(CellHandle ch)
+    {
+
+        if (!cellTypesComputed)
+            computeCellTypes();
+
+        ++isCellFlippedCalls;
+
+        return cellTypes[ch] == Flipped;
+    }
+
+    bool isFaceDegenerate(HalfFaceHandle hfh)
+    {
+        if (faceTypes[inputMesh.face_handle(hfh)] == NotComputed)
+        {
+            ++isFaceDegenerateCalls;
+
+            if (!inputMesh.incident_cell(hfh).is_valid())
+                return false;
+            auto params = getParameters(hfh);
+            if (isOnLine(params[0], params[1], params[2]))
+                faceTypes[inputMesh.face_handle(hfh)] = Degenerate;
+            else
+                faceTypes[inputMesh.face_handle(hfh)] = Proper;
+        }
+
+        return faceTypes[inputMesh.face_handle(hfh)] == Degenerate;
+    }
+
     bool areColinear(CellHandle ch, HalfEdgeHandle heh, Direction dir);
 
     bool isSingularVertex(VertexHandle vh);
@@ -614,7 +668,18 @@ private:
     bool intersectsFaceRelaxed(HalfFaceHandle hfh, Parameter start, Parameter end);
 
 
-    HalfFaceHandle rotateAroundHalfedge(CellHandle startCell, HalfEdgeHandle currentEdge, bool ccw = true);
+    HalfFaceHandle rotateAroundHalfedge(CellHandle startCell, HalfEdgeHandle currentEdge, bool ccw = true)
+    {
+        if (ccw)
+            currentEdge = inputMesh.opposite_halfedge_handle(currentEdge);
+
+        for (auto hehf_it = inputMesh.hehf_iter(currentEdge); hehf_it.valid(); ++hehf_it)
+            if (startCell == inputMesh.incident_cell(*hehf_it))
+                return *hehf_it;
+
+        assert(false);
+        return HalfFaceHandle();
+    }
 
     VertexHandle getVertexWithParam(CellHandle ch, Parameter param);
     EdgeHandle getEdgeWithParam(CellHandle ch, Parameter param);
@@ -629,10 +694,30 @@ private:
     const Position inputPosition(VertexHandle vh) {  return inputMesh.vertex(vh); }
 
     Parameter& parameter(CellHandle ch, VertexHandle vh) { return vertexParameters[ch][vh]; }
-    std::vector<Parameter> getParameters(CellHandle ch, std::vector<VertexHandle> vhs);
-    std::vector<Parameter> getParameters(CellHandle ch);
-    std::vector<Parameter> getParameters(HalfFaceHandle hfh);
-    std::vector<Parameter> getParameters(HalfFaceHandle hfh, HalfEdgeHandle heh);
+    std::vector<Parameter> getParameters(CellHandle ch, std::vector<VertexHandle> vhs)
+    {
+        auto res = std::vector<Parameter>();
+        for (auto vh : vhs)
+            res.push_back(vertexParameters[ch][vh]);
+        return res;
+    }
+    std::vector<Parameter> getParameters(CellHandle ch)
+    {
+        auto vertices = cellVertices[ch];
+        return getParameters(ch, vertices);
+    }
+
+    std::vector<Parameter> getParameters(HalfFaceHandle hfh)
+    {
+        auto vertices = inputMesh.get_halfface_vertices(hfh);
+        return getParameters(inputMesh.incident_cell(hfh), vertices);
+    }
+
+    std::vector<Parameter> getParameters(HalfFaceHandle hfh, HalfEdgeHandle heh)
+    {
+        auto vertices = inputMesh.get_halfface_vertices(hfh, heh);
+        return getParameters(inputMesh.incident_cell(hfh), vertices);
+    }
 
     Position getPosition(Parameter param, CellHandle ch);
     Parameter getParameter(Position pos, CellHandle ch);
@@ -640,7 +725,30 @@ private:
     Parameter getHexVertexParameter(VertexHandle hexVh, CellHandle ch);
 
 
-    Parameter getParameterNormal(HalfFaceHandle hfh);
+    Parameter getParameterNormal(HalfFaceHandle hfh)
+    {
+        auto vertices = inputMesh.get_halfface_vertices(hfh);
+        auto ch = inputMesh.incident_cell(hfh);
+        if (!ch.is_valid())
+            ch = inputMesh.incident_cell(inputMesh.opposite_halfface_handle(hfh));
+        auto u = parameter(ch, vertices[0]);
+        auto v = parameter(ch, vertices[1]);
+        auto w = parameter(ch, vertices[2]);
+
+        auto n = ((v - u) % (w - u));
+
+        if (n.length() < 1e-6)
+        {
+            // dont trust n
+            if (isDegenerate(u, v, w, u + n))
+                return -1.0 * n.normalized();
+            else
+                return n.normalized();
+        }
+        else
+            return n.normalized();
+    }
+
     Matrix4x4d getParametrizationMatrix(Position  p, Position  q, Position  r, Position  s,
                                         Parameter u, Parameter v, Parameter w, Parameter t);
     Matrix4x4d getInverseParametrizationMatrix(Position  p, Position  q, Position  r, Position  s,
@@ -660,7 +768,10 @@ private:
     void propagateVertexParameter(Parameter parameter, VertexHandle vh, CellHandle startCell);
 
     const Transition& getTransitionFunction(HalfFaceHandle hfh);
-    void setTransitionFunction(HalfFaceHandle hfh, Transition transitionFunction);
+    void setTransitionFunction(HalfFaceHandle hfh, Transition transitionFunction)
+    {
+        transitionFunctions[hfh] = transitionFunction;
+    }
 
     Transition getTransitionFunctionAroundHalfedge(CellHandle ch, HalfEdgeHandle heh);
     Transition getTransitionFunctionRecursive(CellHandle currentCell, CellHandle toCell, VertexHandle vh, Transition tranFun, std::set<CellHandle>& visited);
@@ -674,14 +785,89 @@ private:
 
     Parameter projectedParam(Parameter param, CellHandle ch, HalfEdgeHandle heh);
 
-    double parametrizationAngle(HalfFaceHandle hfh1, HalfFaceHandle hfh2, HalfEdgeHandle heh);
+    double parametrizationAngle(HalfFaceHandle hfh1, HalfFaceHandle hfh2, HalfEdgeHandle heh)
+    {
+        auto ch = inputMesh.incident_cell(hfh1);
 
-    int edgeValence(EdgeHandle eh);
+        auto halfedge = inputMesh.halfedge(heh);
+
+        auto nextHe1 = inputMesh.next_halfedge_in_halfface(heh, hfh1);
+        auto nextHe2 = inputMesh.next_halfedge_in_halfface(inputMesh.opposite_halfedge_handle(heh), hfh2);
+
+        auto vh0 = halfedge.from_vertex();
+        auto vh1 = halfedge.to_vertex();
+        auto vh2 = inputMesh.halfedge(nextHe1).to_vertex();
+        auto vh3 = inputMesh.halfedge(nextHe2).to_vertex();
+
+        auto u = parameter(ch, vh0);
+        auto v = parameter(ch, vh1);
+        auto w = parameter(ch, vh2);
+        auto t = parameter(ch, vh3);
+
+        auto d1 = v - u;
+        auto d2 = w - u;
+        auto d3 = d1 % d2;
+        d2 = d3 % d1;
+
+        auto d4 = t - u;
+        auto d5 = d1 % d4;
+        d4 = d5 % d1;
+
+        if ((d2.length() == 0) || (d4.length() == 0))
+        {
+            HEXEX_DEBUG_ONLY(std::cerr << "cannot compute dihedral angle for degenerate triangle" << std::endl);
+            return 0;
+        }
+
+        d2.normalize();
+        d4.normalize();
+
+        auto alpha = acos(std::max(std::min(d2 | d4, 1.0), -1.0));
+
+        return alpha;
+    }
+
+    int edgeValence(EdgeHandle eh)
+    {
+        auto angleSum = 0.0;
+
+        auto heh = inputMesh.halfedge_handle(eh, 0);
+
+        auto hehf_it = inputMesh.hehf_iter(heh, 2);
+
+        for (auto i = 0u; i < inputMesh.valence(eh); ++i, ++hehf_it)
+        {
+            if (inputMesh.is_boundary(*hehf_it))
+                continue;
+
+            auto hf1 = *hehf_it;
+            auto hf2 = inputMesh.adjacent_halfface_in_cell(hf1, heh);
+
+            auto ch = inputMesh.incident_cell(hf1);
+
+            auto alpha = parametrizationAngle(hf1, hf2, heh);
+
+            if (isCellFlipped(ch))
+                angleSum -= alpha;
+            else
+                angleSum += alpha;
+        }
+
+        return round(angleSum / (M_PI / 2.0));
+    }
     void calculateEdgeSingularity(EdgeHandle eh);
     void calculateEdgeSingularities();
 
-    void setTranslation(GridIsomorphism& tranFun, Parameter translation);
-    void setTranslation(Matrix4x4d& tranFun, Parameter translation);
+    void setTranslation(GridIsomorphism& tranFun, Parameter translation)
+    {
+        tranFun.setTranslation(translation);
+    }
+    void setTranslation(Matrix4x4d& tranFun, Parameter translation)
+    {
+        tranFun(0, 3) = translation[0];
+        tranFun(1, 3) = translation[1];
+        tranFun(2, 3) = translation[2];
+    }
 
 
     std::vector<Dart*> getDartsBetweenDarts01(Dart* d_s, Dart* d_e);
@@ -756,7 +942,7 @@ private:
     HalfFaceProperty<std::vector<Dart*>> halffaceDarts;
     HalfFaceProperty<std::vector<Dart*>> halffaceSecondaryDarts;
 
-    static const Transition identity;
+    inline static const Transition identity = Transition();
     std::vector<Transition> all24Transitions;
 
     bool transitionFunctionsComputed;
