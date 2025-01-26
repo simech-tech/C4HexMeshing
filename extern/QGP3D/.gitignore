@@ -1,0 +1,12 @@
+/.vscode
+/build
+/build*
+/Debug
+/RelWithDebInfo
+/Release*
+/Build
+/artifacts
+
+*.log
+
+*_out.hexex
