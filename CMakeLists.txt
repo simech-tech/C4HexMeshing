@@ -65,8 +65,10 @@ add_subdirectory(src)
 
 ### Add CLI
 if (C4Hex_BUILD_CLI)
-    add_subdirectory(cli)
+    add_subdirectory(cliC4Hex)
+    add_subdirectory(cliHexEx)
     add_subdirectory(cliMC3D)
+    add_subdirectory(cliQGP3D)
 endif()
 
 ### Fake successful finder run if compiling as a dependent project.
